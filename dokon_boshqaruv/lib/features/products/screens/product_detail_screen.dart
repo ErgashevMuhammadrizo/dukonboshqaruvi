@@ -256,6 +256,7 @@ class ProductDetailScreen extends ConsumerWidget {
         }
         return 'Bu amal uchun ruxsat yo‘q. Hisobingiz va do‘kon huquqlarini tekshiring.';
       }
+      if (code == 409) return 'Mahsulot savdo yoki ombor tarixida mavjud. Uni arxivlang.';
       if (code == 401) return 'Sessiya muddati tugagan. Qayta tizimga kiring.';
       if (code == 404)
         return 'Mahsulot topilmadi yoki bu do‘konga tegishli emas.';

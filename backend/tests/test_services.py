@@ -88,6 +88,23 @@ class ProductAndReportTests(TestCase):
   self.assertEqual(Decimal(str(summary.data['items_sold'])),Decimal('2'))
   self.assertEqual(summary.data['top_products'][0]['name'],'Non')
 
+ def test_delete_unused_product_and_protect_history(self):
+  unused=Product.objects.create(store=self.store,name='Yangi',sku='NEW-DELETE',sale_price='10')
+  response=self.client.delete(f'/api/v1/products/{unused.pk}/')
+  self.assertEqual(response.status_code,204)
+  self.assertFalse(Product.objects.filter(pk=unused.pk).exists())
+  create_sale(self.store,{'operation_id':'f5e913f6-d901-4601-9589-d9c104745116','items':[{'product_id':self.product.pk,'quantity':'1'}],'cash':'2500','card':'0'})
+  response=self.client.delete(f'/api/v1/products/{self.product.pk}/')
+  self.assertEqual(response.status_code,409)
+  self.assertTrue(Product.objects.filter(pk=self.product.pk).exists())
+
+ def test_delete_other_store_product_forbidden(self):
+  other=User.objects.create_user(username='delete-other',password='secure-password-123')
+  other_store=Store.objects.create(owner=other,name='Boshqa')
+  product=Product.objects.create(store=other_store,name='Boshqa',sku='OTHER',sale_price='10')
+  self.assertEqual(self.client.delete(f'/api/v1/products/{product.pk}/').status_code,404)
+  self.assertTrue(Product.objects.filter(pk=product.pk).exists())
+
  def test_product_image_is_returned_by_api(self):
   import tempfile
   from io import BytesIO
@@ -111,6 +128,10 @@ class ProductAndReportTests(TestCase):
    image_response=serve_media(RequestFactory().get(created.image.url),created.image.name)
    self.assertEqual(image_response.status_code,200)
    self.assertEqual(image_response['Content-Type'],'image/png')
+   with override_settings(DEBUG=False, ALLOWED_HOSTS=['testserver'], SECURE_SSL_REDIRECT=False):
+    served=self.client.get(created.image.url)
+    self.assertEqual(served.status_code,200)
+    served.close()
 
 class DebtApiTests(TestCase):
  def setUp(self):

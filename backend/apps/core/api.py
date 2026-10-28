@@ -2,6 +2,7 @@ from decimal import Decimal
 from datetime import date
 from itertools import groupby
 from django.db import transaction
+from django.db.models.deletion import ProtectedError
 from django.db.models import Sum,Count,F, Q
 from django.utils import timezone
 from django.core.exceptions import ValidationError as DjangoError
@@ -269,7 +270,15 @@ class CategoryView(TenantMixin,viewsets.ModelViewSet):
 class ProductView(TenantMixin,viewsets.ModelViewSet):
     queryset=Product.objects.all(); serializer_class=ProductSerializer
     parser_classes=[JSONParser,MultiPartParser,FormParser]
-    http_method_names=['get','post','patch','head','options']
+    http_method_names=['get','post','patch','delete','head','options']
+    def destroy(self,request,*args,**kwargs):
+        product=self.get_object()
+        try:
+            with transaction.atomic():
+                product.delete()
+        except ProtectedError:
+            return Response({'error':{'code':'product_has_history','message':'Mahsulot savdo yoki ombor tarixida mavjud. Uni arxivlang.'}},status=409)
+        return Response(status=204)
     def get_queryset(self):
         qs=super().get_queryset()
         q=self.request.query_params.get('q')
